@@ -23,6 +23,15 @@
       }
     ],
     "paths": {
+      "@/frontend/*": [
+        "./frontend/*"
+      ],
+      "@/backend/*": [
+        "./backend/*"
+      ],
+      "@/shared/*": [
+        "./backend/shared/*"
+      ],
       "@/*": [
         "./src/*"
       ]

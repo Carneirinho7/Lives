@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: liveloot
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    disk:
+      name: liveloot-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: ADMIN_SETUP_TOKEN
+        generateValue: true

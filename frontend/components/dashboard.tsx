@@ -20,6 +20,10 @@ export default function Dashboard() {
   const [addOpen, setAddOpen] = useState(false);
   const [liveUrl, setLiveUrl] = useState("");
   const [addError, setAddError] = useState("");
+  const [adminSetupOpen, setAdminSetupOpen] = useState(false);
+  const [adminSetupToken, setAdminSetupToken] = useState("");
+  const [adminSetupError, setAdminSetupError] = useState("");
+  const [adminSetupBusy, setAdminSetupBusy] = useState(false);
 
   useEffect(() => {
     try {
@@ -161,6 +165,31 @@ export default function Dashboard() {
     window.location.replace("/login");
   }, []);
 
+  const claimAdmin = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAdminSetupBusy(true);
+    setAdminSetupError("");
+    try {
+      const response = await fetch("/api/auth/claim-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: adminSetupToken.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setAdminSetupError(result.error ?? "Não foi possível ativar o administrador.");
+        return;
+      }
+      setData((current) => current ? { ...current, user: { ...current.user, role: "admin" } } : current);
+      setAdminSetupOpen(false);
+      setAdminSetupToken("");
+    } catch {
+      setAdminSetupError("Falha de conexão. Tente novamente.");
+    } finally {
+      setAdminSetupBusy(false);
+    }
+  }, [adminSetupToken]);
+
   const categories = useMemo(() => ["Todas", ...new Set((data?.streams ?? []).map((stream) => stream.category))], [data]);
   const streams = (removedReady ? [...(data?.streams ?? []), ...customStreams] : []).filter((stream) =>
     !removedIds.includes(stream.id) &&
@@ -173,7 +202,7 @@ export default function Dashboard() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="LiveLoot início"><span className="brand-mark">L</span><span>live<span className="brand-accent">loot</span></span></a>
         <nav className="main-nav" aria-label="Navegação principal"><a className="nav-active" href="#lives">Explorar</a><a href="#lives">Minhas lives</a><a href="#rewards">Recompensas</a></nav>
-        <div className="profile"><div className="avatar">{data?.user.name?.[0]?.toUpperCase() ?? "L"}</div><span>{data?.user.name ?? "Carregando"}</span>{data?.user.role === "admin" && <span className="admin-badge">ADMIN</span>}<button className="logout-button" onClick={handleLogout}>Sair</button></div>
+        <div className="profile"><div className="avatar">{data?.user.name?.[0]?.toUpperCase() ?? "L"}</div><span>{data?.user.name ?? "Carregando"}</span>{data?.user.role === "admin" ? <span className="admin-badge">ADMIN</span> : <button className="claim-admin-button" onClick={() => { setAdminSetupError(""); setAdminSetupOpen(true); }}>Configurar admin</button>}<button className="logout-button" onClick={handleLogout}>Sair</button></div>
       </header>
 
       <section className="hero" id="top">
@@ -199,6 +228,7 @@ export default function Dashboard() {
         {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Fechar aviso">×</button></div>}
         {lastRemoved && <div className="notice remove-notice" role="status">Live de {lastRemoved.channelName} removida da sua lista.<button className="undo-remove" onClick={undoRemove}>Desfazer</button><button onClick={() => setLastRemoved(null)} aria-label="Fechar aviso">×</button></div>}
         {addOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddOpen(false); }}><section className="add-modal" role="dialog" aria-modal="true" aria-labelledby="add-live-title"><button className="modal-close" onClick={() => setAddOpen(false)} aria-label="Fechar">×</button><div className="eyebrow">SUA LISTA DE LIVES</div><h3 id="add-live-title">Adicionar live</h3><p>Cole o link do canal da Twitch ou do Kick.</p><form onSubmit={addStream}><label htmlFor="live-url">Link da live</label><input id="live-url" type="url" value={liveUrl} onChange={(event) => setLiveUrl(event.target.value)} placeholder="https://www.twitch.tv/canal" autoFocus required />{addError && <div className="form-error" role="alert">{addError}</div>}<div className="modal-actions"><button type="button" className="cancel-button" onClick={() => setAddOpen(false)}>Cancelar</button><button type="submit" className="add-live-button">Adicionar</button></div></form></section></div>}
+        {adminSetupOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setAdminSetupOpen(false); }}><section className="add-modal" role="dialog" aria-modal="true" aria-labelledby="claim-admin-title"><button className="modal-close" onClick={() => setAdminSetupOpen(false)} aria-label="Fechar">×</button><div className="eyebrow">CONFIGURAÇÃO DO SITE</div><h3 id="claim-admin-title">Ativar administrador</h3><p>O dono do site encontra este código nas variáveis de ambiente da hospedagem.</p><form onSubmit={claimAdmin}><label htmlFor="admin-setup-token">Código de configuração</label><input id="admin-setup-token" type="password" autoComplete="off" value={adminSetupToken} onChange={(event) => setAdminSetupToken(event.target.value)} required autoFocus />{adminSetupError && <div className="form-error" role="alert">{adminSetupError}</div>}<div className="modal-actions"><button type="button" className="cancel-button" onClick={() => setAdminSetupOpen(false)}>Cancelar</button><button type="submit" className="add-live-button" disabled={adminSetupBusy}>{adminSetupBusy ? "Verificando…" : "Ativar admin"}</button></div></form></section></div>}
         <div className="stream-grid">
           {streams.map((stream) => <article className="stream-card" key={stream.id}>
             <PlayerEmbed stream={stream} onPing={handlePing} onActivity={handleActivity} />
