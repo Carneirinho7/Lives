@@ -25,6 +25,7 @@ export function PlayerEmbed({ stream, onPing, onActivity }: Props) {
 
   // IntersectionObserver pausa o contador quando pelo menos metade do card sai da tela.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- O hostname só existe no navegador e define a origem do player.
     setParentDomain(window.location.hostname);
   }, []);
 

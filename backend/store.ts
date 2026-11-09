@@ -12,26 +12,18 @@ export function getStreams() {
   return seedStreams;
 }
 
-const pingRuntime = globalThis as typeof globalThis & {
-  livePointsPings?: Map<string, number>;
-};
-const lastPings = (pingRuntime.livePointsPings ??= new Map());
+const pingRuntime = globalThis as typeof globalThis & { liveLootLocalPings?: Map<string, number> };
+const localPings = (pingRuntime.liveLootLocalPings ??= new Map());
 
-export function applyPing(userId: string, streamId: string, increment: () => number) {
-  if (!seedStreams.some((stream) => stream.id === streamId)) {
-    return { ok: false as const, status: 404, error: "Live não encontrada." };
-  }
-
+export function applyLocalPing(userId: string, streamId: string, increment: () => number) {
   const key = `${userId}:${streamId}`;
   const now = Date.now();
-  const lastPingAt = lastPings.get(key) ?? null;
-  const retryAfter = lastPingAt === null ? 0 : Math.ceil((60_000 - (now - lastPingAt)) / 1000);
-
+  const lastPingAt = localPings.get(key);
+  const retryAfter = lastPingAt === undefined ? 0 : Math.ceil((60_000 - (now - lastPingAt)) / 1000);
   if (retryAfter > 0) {
-    return { ok: false as const, status: 429, error: "Aguarde para receber os próximos pontos.", retryAfter };
+    return { ok: false as const, status: 429, error: "Aguarde para receber os proximos pontos.", retryAfter };
   }
-
   const pointsBalance = increment();
-  lastPings.set(key, now);
+  localPings.set(key, now);
   return { ok: true as const, pointsBalance, awarded: 5 };
 }

@@ -15,7 +15,7 @@ export async function updateSession(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
@@ -24,12 +24,12 @@ export async function updateSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
+        Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value));
       },
     },
   });
 
-  // Refreshes Supabase cookies when a session exists; this does not gate routes.
-  await supabase.auth.getClaims();
+  const { data, error } = await supabase.auth.getClaims();
 
-  return response;
+  return { response, authenticated: !error && typeof data?.claims?.sub === "string" };
 }

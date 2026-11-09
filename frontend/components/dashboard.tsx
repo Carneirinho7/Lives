@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Stream, User } from "@/shared/types";
 import { PlayerEmbed } from "@/frontend/components/player-embed";
-import { authClient } from "@/frontend/auth/auth-client";
+import { createClient } from "@/frontend/lib/supabase/client";
 
 type DashboardData = { user: User; streams: Stream[] };
 
@@ -28,11 +28,16 @@ export default function Dashboard() {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem("liveloot-removed-streams");
-      if (saved) setRemovedIds(JSON.parse(saved) as string[]);
+      if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate persisted browser preferences once on mount.
+        setRemovedIds(JSON.parse(saved) as string[]);
+      }
       const savedCustom = window.localStorage.getItem("liveloot-custom-streams");
       if (savedCustom) {
         const parsed = JSON.parse(savedCustom) as Stream[];
-        if (Array.isArray(parsed)) setCustomStreams(parsed);
+        if (Array.isArray(parsed)) {
+          setCustomStreams(parsed);
+        }
       }
     } catch {
       // Se o armazenamento local estiver indisponível, a lista continua funcionando em memória.
@@ -40,16 +45,17 @@ export default function Dashboard() {
       setRemovedReady(true);
     }
     fetch("/api/dashboard")
-      .then((response) => {
+      .then(async (response) => {
         if (response.status === 401) {
           window.location.replace("/login");
           return null;
         }
-        if (!response.ok) throw new Error("Dashboard indisponível");
-        return response.json();
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "Dashboard indisponível");
+        return result;
       })
       .then((result) => { if (result) setData(result); })
-      .catch(() => setNotice("Não foi possível carregar as lives."));
+      .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Não foi possível carregar as lives."));
   }, []);
 
   const handleActivity = useCallback((streamId: string, active: boolean) => {
@@ -161,7 +167,8 @@ export default function Dashboard() {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    await authClient.signOut();
+    const supabase = createClient();
+    await supabase.auth.signOut();
     window.location.replace("/login");
   }, []);
 

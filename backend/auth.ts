@@ -1,18 +1,33 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins";
+import { mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { Pool } from "pg";
+
+const baseURL = process.env.BETTER_AUTH_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3000";
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl && process.env.NODE_ENV === "production") {
+  throw new Error("DATABASE_URL precisa apontar para o PostgreSQL do Supabase em producao.");
+}
 
 const dataDirectory = join(process.cwd(), "data");
-mkdirSync(dataDirectory, { recursive: true });
-const baseURL = process.env.BETTER_AUTH_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3000";
-
+if (!databaseUrl) mkdirSync(dataDirectory, { recursive: true });
 const globalForAuth = globalThis as typeof globalThis & {
-  liveLootAuthDatabase?: DatabaseSync;
+  liveLootDatabase?: Pool;
+  liveLootLocalDatabase?: DatabaseSync;
 };
-export const authDatabase = (globalForAuth.liveLootAuthDatabase ??= new DatabaseSync(join(dataDirectory, "liveloot.sqlite")));
-authDatabase.exec("PRAGMA journal_mode = WAL");
+export const postgresPool = databaseUrl
+  ? (globalForAuth.liveLootDatabase ??= new Pool({
+      connectionString: databaseUrl,
+      ssl: { ca: readFileSync(join(process.cwd(), "supabase", "prod-ca-2021.crt"), "utf8"), rejectUnauthorized: true },
+      max: 5,
+    }))
+  : null;
+export const sqliteDatabase = !databaseUrl
+  ? (globalForAuth.liveLootLocalDatabase ??= new DatabaseSync(join(dataDirectory, "liveloot.sqlite")))
+  : null;
+const authDatabase = postgresPool ?? sqliteDatabase!;
 
 export const auth = betterAuth({
   appName: "LiveLoot",
@@ -48,7 +63,9 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          const adminExists = authDatabase.prepare("SELECT 1 FROM user WHERE role = 'admin' LIMIT 1").get();
+          const adminExists = postgresPool
+            ? (await postgresPool!.query('SELECT 1 FROM liveloot."user" WHERE role = \'admin\' LIMIT 1')).rows.length > 0
+            : Boolean(sqliteDatabase!.prepare("SELECT 1 FROM user WHERE role = 'admin' LIMIT 1").get());
           const shouldBootstrapAdmin = process.env.NODE_ENV !== "production" && !adminExists;
           return { data: { ...user, ...(shouldBootstrapAdmin ? { role: "admin" } : {}) } };
         },

@@ -5,12 +5,18 @@ services:
     plan: starter
     dockerfilePath: ./Dockerfile
     healthCheckPath: /login
-    disk:
-      name: liveloot-data
-      mountPath: /app/data
-      sizeGB: 1
     envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://alzrsebcmfqzedegptow.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
       - key: BETTER_AUTH_SECRET
         generateValue: true
+      - key: LEGACY_BETTER_AUTH_ENABLED
+        value: "false"
       - key: ADMIN_SETUP_TOKEN
         generateValue: true

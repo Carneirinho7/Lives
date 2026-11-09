@@ -9,15 +9,20 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
     "better-auth": "^1.7.18",
     "next": "^16.2.0",
+    "pg": "8.16.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.16",
     "@types/node": "^22.19.0",
+    "@types/pg": "8.15.5",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "eslint": "^9.38.0",

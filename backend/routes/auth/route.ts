@@ -1,16 +1,22 @@
-import { toNextJsHandler } from "better-auth/next-js";
-import { auth } from "@/backend/auth";
-import { ensureAuthSchema } from "@/backend/migrations";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-const handlers = toNextJsHandler(auth);
 
-export async function GET(request: Request) {
-  await ensureAuthSchema();
-  return handlers.GET(request);
+function legacyAuthDisabled() {
+  return process.env.LEGACY_BETTER_AUTH_ENABLED !== "true";
 }
 
-export async function POST(request: Request) {
+async function handleLegacyAuth(request: Request, method: "GET" | "POST") {
+  if (legacyAuthDisabled()) return new NextResponse(null, { status: 404 });
+  const [{ auth }, { toNextJsHandler }, { ensureAuthSchema }] = await Promise.all([
+    import("@/backend/auth"),
+    import("better-auth/next-js"),
+    import("@/backend/migrations"),
+  ]);
+  const handlers = toNextJsHandler(auth);
   await ensureAuthSchema();
-  return handlers.POST(request);
+  return handlers[method](request);
 }
+
+export const GET = (request: Request) => handleLegacyAuth(request, "GET");
+export const POST = (request: Request) => handleLegacyAuth(request, "POST");

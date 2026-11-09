@@ -1,14 +1,16 @@
-﻿# LiveLoot
+# LiveLoot
 
-MVP de uma aplicaÃ§Ã£o para acompanhar vÃ¡rias lives e acumular pontos enquanto os players estÃ£o visÃ­veis.
+MVP para acompanhar lives e acumular pontos enquanto os players estao visiveis.
 
-## Entrar no LiveLoot
+## Banco de dados
 
-Abra `/login`, escolha **Criar conta** e cadastre seu nome, e-mail e uma senha com pelo menos 10 caracteres. No ambiente local, o primeiro cadastro recebe o papel de administrador; os demais recebem o papel de usuÃ¡rio. Em produÃ§Ã£o, a conta do dono reivindica admin usando o cÃ³digo inicial da hospedagem.
+Os clientes SSR do Supabase ficam em `frontend/lib/supabase/`. O Auth e o perfil novo usam o projeto `alzrsebcmfqzedegptow`; `public.profiles` tem RLS e nao permite que usuarios alterem pontos ou papel de administrador diretamente. O RPC de pontos autentica o usuario e aplica limite de 60 segundos por live. `.env.local` e ignorado pelo Git.
 
-O LiveLoot guarda contas, sessÃµes e saldo em `data/liveloot.sqlite`. A autenticaÃ§Ã£o usa Better Auth, cookies HttpOnly e limite de tentativas. O envio de e-mail de verificaÃ§Ã£o ainda precisa ser configurado antes de tratar os e-mails como identidades verificadas.
+`DATABASE_URL` ainda aponta para o banco legado e e usado apenas para ler o perfil Better Auth na primeira sessao confirmada. `SUPABASE_SECRET_KEY` e obrigatoria somente no servidor para importar esse perfil uma vez e para a configuracao inicial do administrador. Nunca use essa chave em variavel `NEXT_PUBLIC_`. Mantenha o banco e as tabelas Better Auth antigos durante a validacao; eles nao sao apagados nem migrados destrutivamente.
 
-As tabelas de autenticaÃ§Ã£o sÃ£o aplicadas automaticamente no primeiro acesso.
+As senhas Better Auth usam scrypt e nao podem ser importadas diretamente no Supabase Auth. O usuario legado deve criar uma conta com o mesmo e-mail, confirmar o endereco e definir uma nova senha; depois, nome, pontos e papel sao copiados sem apagar o registro antigo. O projeto Supabase esta com confirmacao por e-mail habilitada. Configure no painel do Supabase os redirects `/auth/confirm` para localhost e para o dominio publicado e um SMTP para envio de e-mails em producao.
+
+As migrations em `supabase/migrations/` criam o perfil, RLS, o gatilho de cadastro e o RPC de pontos. `LEGACY_BETTER_AUTH_ENABLED` fica falso por padrao; o codigo e a dependencia Better Auth permanecem como rollback ate a validacao final.
 
 ## Rodar localmente
 
@@ -21,38 +23,14 @@ Abra <http://localhost:3000>. O projeto usa Next.js App Router, React, TypeScrip
 
 ## Como funciona
 
-- `frontend/components/player-embed.tsx` monta os iframes, mantÃ©m autoplay desativado e Ã¡udio mutado e usa Intersection Observer + Page Visibility API para pausar a contagem fora de foco.
-- `backend/routes/ping.ts` valida sessÃ£o autenticada e limita cada combinaÃ§Ã£o usuÃ¡rio/live a um ping por 60 segundos. Um ping vÃ¡lido acrescenta 5 pontos internos.
-- `backend/store.ts` contÃ©m a lista inicial das lives e valida os pings.
-- `backend/routes/dashboard.ts` fornece o perfil autenticado e as lives para a tela inicial.
-- Os botÃµes de adicionar/remover lives guardam as alteraÃ§Ãµes no `localStorage` deste navegador; o botÃ£o **Adicionar live** aceita links diretos de canais da Twitch e do Kick.
-- `backend/auth.ts` configura o login por e-mail/senha, SQLite e o primeiro administrador.
+- `frontend/components/player-embed.tsx` monta os iframes e pausa a contagem quando a live nao esta visivel.
+- `backend/routes/ping.ts` valida a sessao Supabase no servidor e chama o RPC que soma 5 pontos por minuto em cada canal.
+- `backend/store.ts` contem a lista inicial de lives.
+- As alteracoes de lives no painel ficam no `localStorage` do navegador.
+- `src/proxy.ts` renova cookies Supabase e protege paginas; cada API tambem valida a sessao no servidor.
 
-## OrganizaÃ§Ã£o das pastas
+Os pontos sao internos do LiveLoot. Para acumular pontos oficiais, assista conectado a sua conta Twitch/Kick.
 
-- `frontend/`: interface organizada em `pages/`, `components/`, `auth/` e `styles/`.
-- `backend/`: cÃ³digo do servidor, autenticaÃ§Ã£o, migraÃ§Ãµes, banco SQLite e lÃ³gica de lives/pontos.
-- `backend/shared/`: tipos compartilhados entre front-end e back-end.
-- `src/app/`: camada fina de rotas obrigatÃ³ria do Next.js App Router. As telas vivem em `frontend/pages/`; os `route.ts` registram os endpoints que usam o cÃ³digo de `backend/`.
+## Publicar no Render
 
-## PersistÃªncia e autenticaÃ§Ã£o
-
-Contas, sessÃµes e saldo sÃ£o persistidos em SQLite. A lista inicial de lives estÃ¡ em `backend/store.ts`.
-
-Os pontos adicionados pelo endpoint `/api/ping` sÃ£o apenas pontos internos do LiveLoot. Para acumular pontos oficiais, use **Abrir Twitch/Kick** no card e assista enquanto estiver conectado Ã  sua conta na plataforma.
-
-O parÃ¢metro `parent` obrigatÃ³rio do Twitch Ã© preenchido com o hostname atual. O embed do Kick recebe os parÃ¢metros documentados `autoplay=false` e `muted=true`; o iframe envia a origem via `referrerPolicy`.
-
-As lives de exemplo sÃ£o canais editÃ¡veis em `backend/store.ts`.
-
-## Publicar para outras pessoas
-
-O projeto inclui `Dockerfile` e `render.yaml` para publicar como um web service no Render. A configuraÃ§Ã£o usa disco persistente para o SQLite. ServiÃ§os gratuitos do Render nÃ£o oferecem esse disco, entÃ£o essa configuraÃ§Ã£o requer um plano pago. O serviÃ§o ainda nÃ£o foi criado nem o repositÃ³rio publicado.
-
-1. Envie este repositÃ³rio para uma conta GitHub que vocÃª controle.
-2. No Render, crie um Blueprint apontando para o repositÃ³rio e revise o plano e o disco antes de confirmar.
-3. Depois do primeiro deploy, crie sua conta no site. No painel do Render, copie `ADMIN_SETUP_TOKEN` e use-o no cadastro ou no botÃ£o **Configurar admin**.
-4. Compartilhe o endereÃ§o pÃºblico `*.onrender.com` que o Render gerar.
-
-Em produÃ§Ã£o, nenhum cadastro recebe admin automaticamente. O cÃ³digo gerado pelo Render permite ao dono reivindicar a administraÃ§Ã£o uma Ãºnica vez.
-
+O `render.yaml` cria um web service Docker. Configure `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY` no Render; a chave secreta e server-only. `BETTER_AUTH_SECRET` permanece para rollback e `ADMIN_SETUP_TOKEN` e gerado pelo Blueprint. Depois de confirmar o e-mail e entrar, o dono pode usar o token para reivindicar admin.
