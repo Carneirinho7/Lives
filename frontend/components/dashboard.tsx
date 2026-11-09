@@ -165,9 +165,17 @@ export default function Dashboard() {
   }, [customStreams, data?.streams, liveUrl, removedIds]);
 
   const handleLogout = useCallback(async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.replace("/login");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        setNotice("Não foi possível encerrar sua sessão. Tente novamente.");
+        return;
+      }
+      window.location.replace("/login");
+    } catch {
+      setNotice("Não foi possível encerrar sua sessão. Confira a conexão e tente novamente.");
+    }
   }, []);
 
   const claimAdmin = useCallback(async (event: FormEvent<HTMLFormElement>) => {

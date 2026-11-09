@@ -16,12 +16,17 @@ export default function ForgotPasswordPage() {
     setBusy(true);
     setError("");
     setMessage("");
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
-    });
-    if (resetError) setError("Não foi possível enviar o link. Confira o e-mail e tente novamente.");
-    else setMessage("Se houver uma conta para esse e-mail, enviaremos um link para redefinir a senha.");
-    setBusy(false);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
+      });
+      if (resetError) setError("Não foi possível enviar o link. Confira o e-mail e tente novamente.");
+      else setMessage("Se houver uma conta para esse e-mail, enviaremos um link para redefinir a senha.");
+    } catch {
+      setError("Não consegui conectar ao LiveLoot. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

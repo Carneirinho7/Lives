@@ -20,10 +20,15 @@ export default function ResetPasswordPage() {
     }
 
     setBusy(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) setError("Não foi possível atualizar a senha. Solicite um novo link e tente novamente.");
-    else window.location.replace("/");
-    setBusy(false);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) setError("Não foi possível atualizar a senha. Solicite um novo link e tente novamente.");
+      else window.location.replace("/");
+    } catch {
+      setError("Não consegui conectar ao LiveLoot. Solicite um novo link e tente novamente.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

@@ -21,7 +21,7 @@ function isLegacyProfile(value: LegacyProfile | null): value is LegacyProfile {
   return value !== null && typeof value.id === "string";
 }
 
-export async function getAuthenticatedProfile() {
+export async function getAuthenticatedProfile(options: { skipLegacyImport?: boolean } = {}) {
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
@@ -40,7 +40,7 @@ export async function getAuthenticatedProfile() {
   if (profileError) throw new ProfileAccessError("Não foi possível carregar seu perfil.", 503);
   if (!profile) throw new ProfileAccessError("O perfil da conta ainda não foi criado.", 503);
 
-  if (!profile.legacy_user_id) {
+  if (!options.skipLegacyImport && !profile.legacy_user_id) {
     // The old database only provides a one-time points/profile import. It is
     // not required to serve the authenticated dashboard, so a legacy DB
     // timeout or outage must not make the lives API fail or return an empty

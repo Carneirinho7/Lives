@@ -7,7 +7,9 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const authenticated = await getAuthenticatedProfile();
+    // Loading the live list must not wait on the old database used only for
+    // one-time profile/points migration.
+    const authenticated = await getAuthenticatedProfile({ skipLegacyImport: true });
     if (!authenticated) return NextResponse.json({ error: "Entre na sua conta para continuar." }, { status: 401 });
 
     const { user, profile } = authenticated;

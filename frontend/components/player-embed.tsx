@@ -112,7 +112,12 @@ export function PlayerEmbed({ stream }: { stream: Stream }) {
 
   const channelUrl = `https://${stream.platform === "twitch" ? "www.twitch.tv" : "kick.com"}/${encodeURIComponent(stream.channelName)}`;
   const displayedStatus = stream.platform === "kick" && kickLoaded ? "unverified" : status;
-  const needsAttention = displayedStatus !== "playing";
+  const needsAttention = displayedStatus !== "playing" || stream.platform === "twitch";
+  const displayedStatusText = stream.platform === "twitch"
+    ? `${statusText[displayedStatus]} Channel Points não são contabilizados em embeds; assista na Twitch.`
+    : stream.platform === "kick" && kickLoaded
+      ? "Embed carregado; login e pontos não podem ser verificados. Confirme no canal oficial."
+      : statusText[displayedStatus];
 
   return (
     <>
@@ -134,7 +139,7 @@ export function PlayerEmbed({ stream }: { stream: Stream }) {
       </div>
       <div className={`player-status ${needsAttention ? "player-status-attention" : "player-status-playing"}`} role="status" aria-live="polite">
         <span className={`status-dot ${needsAttention ? "" : "status-dot-active"}`} />
-        <span>{statusText[displayedStatus]}</span>
+        <span>{displayedStatusText}</span>
         <a href={channelUrl} target="_blank" rel="noopener noreferrer">Abrir canal oficial ↗</a>
       </div>
     </>

@@ -26,6 +26,10 @@ export default function LoginPage() {
       if (!active) return;
       setIsPending(false);
       if (data.session && !isSignup && !busy) window.location.replace(getNextPath());
+    }).catch(() => {
+      if (!active) return;
+      setIsPending(false);
+      setError("Não foi possível verificar sua sessão. Confira a conexão e tente novamente.");
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
