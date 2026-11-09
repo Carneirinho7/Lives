@@ -7,11 +7,31 @@ import { createClient } from "@/frontend/lib/supabase/client";
 
 type DashboardData = { user: User; streams: Stream[] };
 
+async function readApiJson(response: Response): Promise<unknown> {
+  const body = await response.text();
+  if (!body.trim()) {
+    throw new Error(`A API respondeu sem conteúdo (HTTP ${response.status}).`);
+  }
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    throw new Error(`A API respondeu em formato inválido (HTTP ${response.status}).`);
+  }
+}
+
+function apiError(payload: unknown, fallback: string) {
+  if (payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string") {
+    return payload.error;
+  }
+  return fallback;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [activeFilter, setActiveFilter] = useState("Todas");
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
+  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [removedReady, setRemovedReady] = useState(false);
   const [lastRemoved, setLastRemoved] = useState<Stream | null>(null);
@@ -49,12 +69,16 @@ export default function Dashboard() {
           window.location.replace("/login");
           return null;
         }
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error ?? "Dashboard indisponível");
+        const result = await readApiJson(response);
+        if (!response.ok) throw new Error(apiError(result, `Falha ao carregar dashboard (HTTP ${response.status}).`));
+        if (!result || typeof result !== "object" || !("user" in result) || !("streams" in result) || !Array.isArray(result.streams)) {
+          throw new Error("A API respondeu, mas os dados do dashboard estão incompletos.");
+        }
         return result;
       })
-      .then((result) => { if (result) setData(result); })
-      .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Não foi possível carregar as lives."));
+      .then((result) => { if (result) setData(result as DashboardData); })
+      .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Não foi possível carregar as lives."))
+      .finally(() => setDashboardLoading(false));
   }, []);
 
   const removeStream = useCallback((stream: Stream) => {
@@ -156,9 +180,9 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: adminSetupToken.trim() }),
       });
-      const result = await response.json();
+      const result = await readApiJson(response);
       if (!response.ok) {
-        setAdminSetupError(result.error ?? "Não foi possível ativar o administrador.");
+        setAdminSetupError(apiError(result, `Não foi possível ativar o administrador (HTTP ${response.status}).`));
         return;
       }
       setData((current) => current ? { ...current, user: { ...current.user, role: "admin" } } : current);
@@ -183,7 +207,7 @@ export default function Dashboard() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="LiveLoot início"><span className="brand-mark">L</span><span>live<span className="brand-accent">loot</span></span></a>
         <nav className="main-nav" aria-label="Navegação principal"><a className="nav-active" href="#lives">Explorar</a><a href="#lives">Minhas lives</a><a href="#rewards">Recompensas</a></nav>
-        <div className="profile"><div className="avatar">{data?.user.name?.[0]?.toUpperCase() ?? "L"}</div><span>{data?.user.name ?? "Carregando"}</span>{data?.user.role === "admin" ? <span className="admin-badge">ADMIN</span> : <button className="claim-admin-button" onClick={() => { setAdminSetupError(""); setAdminSetupOpen(true); }}>Configurar admin</button>}<button className="logout-button" onClick={handleLogout}>Sair</button></div>
+        <div className="profile"><div className="avatar">{data?.user.name?.[0]?.toUpperCase() ?? "L"}</div><span>{data?.user.name ?? (dashboardLoading ? "Carregando" : "Dashboard indisponível")}</span>{data?.user.role === "admin" ? <span className="admin-badge">ADMIN</span> : <button className="claim-admin-button" onClick={() => { setAdminSetupError(""); setAdminSetupOpen(true); }}>Configurar admin</button>}<button className="logout-button" onClick={handleLogout}>Sair</button></div>
       </header>
 
       <section className="hero" id="top">

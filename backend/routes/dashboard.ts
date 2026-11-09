@@ -24,6 +24,10 @@ export async function GET() {
     if (error instanceof ProfileAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    throw error;
+    console.error("[api/dashboard] Failed to load dashboard", error);
+    return NextResponse.json(
+      { error: "Não foi possível carregar sua conta agora. Tente novamente em instantes.", code: "DASHBOARD_UNAVAILABLE" },
+      { status: 503 },
+    );
   }
 }

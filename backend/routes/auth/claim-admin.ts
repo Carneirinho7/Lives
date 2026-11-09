@@ -25,7 +25,11 @@ export async function POST(request: Request) {
     if (error instanceof ProfileAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    throw error;
+    console.error("[api/auth/claim-admin] Failed to load the authenticated profile", error);
+    return NextResponse.json(
+      { error: "Não foi possível verificar sua conta agora. Tente novamente em instantes." },
+      { status: 503 },
+    );
   }
   if (!authenticated) return NextResponse.json({ error: "Entre na sua conta primeiro." }, { status: 401 });
   if (authenticated.profile.role === "admin") return NextResponse.json({ ok: true, role: "admin" });
