@@ -41,7 +41,16 @@ export async function getAuthenticatedProfile() {
   if (!profile) throw new ProfileAccessError("O perfil da conta ainda não foi criado.", 503);
 
   if (!profile.legacy_user_id) {
-    const legacyProfile = await findLegacyProfileByEmail(user.email);
+    // The old database only provides a one-time points/profile import. It is
+    // not required to serve the authenticated dashboard, so a legacy DB
+    // timeout or outage must not make the lives API fail or return an empty
+    // serverless response.
+    let legacyProfile: LegacyProfile | null = null;
+    try {
+      legacyProfile = await findLegacyProfileByEmail(user.email);
+    } catch (error) {
+      console.error("[auth/profile] Optional legacy profile lookup failed", error);
+    }
     if (isLegacyProfile(legacyProfile)) {
       if (!user.email_confirmed_at) {
         throw new ProfileAccessError("Confirme seu e-mail antes de migrar seu perfil antigo.", 403);

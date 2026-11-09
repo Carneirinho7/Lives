@@ -25,6 +25,11 @@ if (databaseUrl && !runtime.liveLootLegacyPool) {
       ca: readFileSync(join(process.cwd(), "supabase", "prod-ca-2021.crt"), "utf8"),
       rejectUnauthorized: true,
     },
+    // Legacy-profile import is optional. Keep an unavailable legacy database
+    // from stalling serverless dashboard requests.
+    connectionTimeoutMillis: 3_000,
+    query_timeout: 3_000,
+    statement_timeout: 3_000,
     max: isServerless ? 1 : 3,
   });
 }
