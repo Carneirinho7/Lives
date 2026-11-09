@@ -72,10 +72,37 @@ export default function LoginPage() {
         });
         if (loginError?.code === "email_not_confirmed") {
           setError("Confirme seu e-mail pelo link que enviamos antes de entrar.");
+        } else if (loginError && !["invalid_credentials", "user_not_found"].includes(loginError.code ?? "")) {
+          setError("Não foi possível conectar ao serviço de login. Tente novamente em instantes.");
         } else if (loginError) {
-          setError("Não foi possível entrar. As senhas da versão antiga do LiveLoot não foram migradas para o Supabase. Se ainda não criou sua conta aqui, clique em “Criar conta” e escolha uma nova senha. Se já criou e confirmou, use “Esqueci minha senha”.");
+          const migrationResponse = await fetch("/api/auth/migrate-legacy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim(), password }),
+          });
+          const migration = await migrationResponse.json().catch(() => ({})) as { status?: string; error?: string };
+
+          if (migration.status === "migrated") {
+            const { error: migratedLoginError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+            if (migratedLoginError) {
+              setError("Sua conta antiga foi migrada, mas n\u00e3o foi poss\u00edvel iniciar a sess\u00e3o. Tente entrar novamente.");
+            } else {
+              await fetch("/api/auth/complete-migration", { method: "POST" }).catch(() => undefined);
+              window.location.replace(getNextPath());
+            }
+          } else if (migration.status === "confirmation_required") {
+            setMessage("Sua conta antiga foi migrada. Enviamos um link de confirma\u00e7\u00e3o para seu e-mail; confirme-o antes de entrar.");
+          } else if (migration.status === "conflict") {
+            setError(migration.error ?? "J\u00e1 existe uma conta Supabase com este e-mail. Use \u201cEsqueci minha senha\u201d para recuperar o acesso; a senha existente n\u00e3o foi alterada.");
+          } else if (migration.status === "unavailable") {
+            setError(migration.error ?? "A migra\u00e7\u00e3o est\u00e1 temporariamente indispon\u00edvel. Aguarde alguns minutos e tente novamente.");
+          } else {
+            setError("N\u00e3o foi poss\u00edvel entrar. Confira o e-mail e a senha. Se sua conta j\u00e1 foi criada no Supabase, use \u201cEsqueci minha senha\u201d para recuperar o acesso.");
+          }
+        } else {
+          await fetch("/api/auth/complete-migration", { method: "POST" }).catch(() => undefined);
+          window.location.replace(getNextPath());
         }
-        else window.location.replace(getNextPath());
       }
     } catch {
       setError("Não consegui conectar ao LiveLoot. Tente novamente.");

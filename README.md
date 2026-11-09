@@ -12,6 +12,19 @@ As senhas Better Auth usam scrypt e nao podem ser importadas diretamente no Supa
 
 As migrations em `supabase/migrations/` criam o perfil, RLS, o gatilho de cadastro e o RPC de pontos. `LEGACY_BETTER_AUTH_ENABLED` fica falso por padrao; o codigo e a dependencia Better Auth permanecem como rollback ate a validacao final.
 
+## Variaveis para Vercel
+
+Configure estas variaveis nas Environment Variables do projeto Vercel:
+
+- `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: obrigatorias para login, cadastro e sessao.
+- `SUPABASE_SECRET_KEY`: obrigatoria no servidor para migrar contas/perfis legados e reivindicar admin. Nunca use o prefixo `NEXT_PUBLIC_`.
+- `DATABASE_URL`: conexao com o PostgreSQL legado Better Auth; necessaria enquanto a migracao de contas e perfis estiver habilitada.
+- `NEXT_PUBLIC_SITE_URL`: defina a origem HTTPS canonica quando usar dominio proprio. O dominio `VERCEL_URL` gerado pela Vercel e aceito automaticamente.
+- `ADMIN_SETUP_TOKEN`: configure se o fluxo de reivindicacao de administrador for usado.
+- `BETTER_AUTH_SECRET` e `BETTER_AUTH_URL`: mantenha apenas se precisar do rollback Better Auth; habilite `LEGACY_BETTER_AUTH_ENABLED=true` somente nesse caso.
+
+No Supabase, adicione `/auth/confirm` aos Redirect URLs para cada dominio e configure SMTP antes de depender de confirmacao por e-mail em producao. Nao publique enquanto o fluxo completo de autenticacao/migracao nao estiver validado.
+
 ## Rodar localmente
 
 ```bash

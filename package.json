@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test:auth": "node --conditions=react-server --test tests/legacy-migration.test.mjs",
     "lint": "eslint ."
   },
   "dependencies": {
