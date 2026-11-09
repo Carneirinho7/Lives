@@ -1,10 +1,10 @@
 # LiveLoot
 
-MVP para acompanhar lives e acumular pontos enquanto os players estao visiveis.
+Painel para abrir canais da Twitch e Kick e conferir o estado dos players. Os pontos oficiais pertencem às plataformas; o LiveLoot não concede nem simula pontos por assistir.
 
 ## Banco de dados
 
-Os clientes SSR do Supabase ficam em `frontend/lib/supabase/`. O Auth e o perfil novo usam o projeto `alzrsebcmfqzedegptow`; `public.profiles` tem RLS e nao permite que usuarios alterem pontos ou papel de administrador diretamente. O RPC de pontos autentica o usuario e aplica limite de 60 segundos por live. `.env.local` e ignorado pelo Git.
+Os clientes SSR do Supabase ficam em `frontend/lib/supabase/`. O Auth e o perfil novo usam o projeto `alzrsebcmfqzedegptow`; `public.profiles` tem RLS e nao permite que usuarios alterem pontos ou papel de administrador diretamente. A permissão de execução do antigo RPC de pontos fictícios foi revogada, sem apagar saldos existentes. `.env.local` e ignorado pelo Git.
 
 `DATABASE_URL` ainda aponta para o banco legado e e usado apenas para ler o perfil Better Auth na primeira sessao confirmada. `SUPABASE_SECRET_KEY` e obrigatoria somente no servidor para importar esse perfil uma vez e para a configuracao inicial do administrador. Nunca use essa chave em variavel `NEXT_PUBLIC_`. Mantenha o banco e as tabelas Better Auth antigos durante a validacao; eles nao sao apagados nem migrados destrutivamente.
 
@@ -23,13 +23,13 @@ Abra <http://localhost:3000>. O projeto usa Next.js App Router, React, TypeScrip
 
 ## Como funciona
 
-- `frontend/components/player-embed.tsx` monta os iframes e pausa a contagem quando a live nao esta visivel.
-- `backend/routes/ping.ts` valida a sessao Supabase no servidor e chama o RPC que soma 5 pontos por minuto em cada canal.
+- `frontend/components/player-embed.tsx` usa o SDK oficial da Twitch para indicar reprodução/pausa; na Kick informa que o iframe carregou, mas não consegue verificar a reprodução. Nenhum desses estados confirma pontos oficiais.
+- `backend/routes/ping.ts` está desativada e retorna `410`; o LiveLoot não concede pontos por tempo de tela ou visibilidade do player.
 - `backend/store.ts` contem a lista inicial de lives.
 - As alteracoes de lives no painel ficam no `localStorage` do navegador.
 - `src/proxy.ts` renova cookies Supabase e protege paginas; cada API tambem valida a sessao no servidor.
 
-Os pontos sao internos do LiveLoot. Para acumular pontos oficiais, assista conectado a sua conta Twitch/Kick.
+Para ganhar pontos oficiais, entre na Twitch ou na Kick e assista pelo canal original. Acompanhe o saldo diretamente no canal; o navegador não fornece ao LiveLoot confirmação confiável desses pontos. O PokeIdle também exige vincular as contas de plataforma para os bônus de live. Não há envio automático de mensagens.
 
 ## Publicar no Render
 

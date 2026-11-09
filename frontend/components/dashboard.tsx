@@ -12,7 +12,6 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState("Todas");
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
-  const [activeStreams, setActiveStreams] = useState<string[]>([]);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [removedReady, setRemovedReady] = useState(false);
   const [lastRemoved, setLastRemoved] = useState<Stream | null>(null);
@@ -56,12 +55,6 @@ export default function Dashboard() {
       })
       .then((result) => { if (result) setData(result); })
       .catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Não foi possível carregar as lives."));
-  }, []);
-
-  const handleActivity = useCallback((streamId: string, active: boolean) => {
-    setActiveStreams((current) => active
-      ? current.includes(streamId) ? current : [...current, streamId]
-      : current.filter((id) => id !== streamId));
   }, []);
 
   const removeStream = useCallback((stream: Stream) => {
@@ -131,8 +124,7 @@ export default function Dashboard() {
       channelName,
       platform,
       category: "PokéIdle",
-      viewers: "canal adicionado",
-      title: `PokéIdle — live de ${channelName}`,
+      title: `Canal ${channelName}`,
     };
     const next = [...customStreams, stream];
     setCustomStreams(next);
@@ -147,24 +139,6 @@ export default function Dashboard() {
     setLiveUrl("");
     setAddOpen(false);
   }, [customStreams, data?.streams, liveUrl, removedIds]);
-
-  const handlePing = useCallback(async (streamId: string) => {
-    try {
-      const response = await fetch("/api/ping", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ streamId }),
-      });
-      const result = await response.json();
-      if (response.ok) {
-        setData((current) => current ? { ...current, user: { ...current.user, pointsBalance: result.pointsBalance } } : current);
-      } else if (response.status !== 429) {
-        setNotice(result.error ?? "Não foi possível registrar os pontos.");
-      }
-    } catch {
-      setNotice("Falha de conexão ao registrar os pontos.");
-    }
-  }, []);
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient();
@@ -214,43 +188,41 @@ export default function Dashboard() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <div className="eyebrow"><span className="sparkle">✦</span> ASSISTA. ACUMULE. RESGATE.</div>
-          <h1>Seu tempo de live<br /><span>vale mais.</span></h1>
-          <p>Acompanhe suas lives favoritas e abra o canal oficial para receber recompensas da plataforma.</p>
-          <div className="hero-tags"><span>✦ Acesso ao canal oficial</span><span>◷ Recompensas na sua conta</span></div>
+          <div className="eyebrow"><span className="sparkle">✦</span> ASSISTA. CONFIRA. RESGATE.</div>
+          <h1>Pontos oficiais<br /><span>na sua conta.</span></h1>
+          <p>Use o player como prévia. Para garantir sua sessão e conferir pontos, assista logado no canal oficial.</p>
+          <div className="hero-tags"><span>Entre na Twitch e na Kick</span><span>Abra cada live em sua plataforma</span></div>
         </div>
-        <div className="balance-card">
-          <div className="balance-top"><span>PONTOS LIVELOOT · DEMONSTRAÇÃO</span><span className="balance-icon">✧</span></div>
-          <div className="balance-number">{(data?.user.pointsBalance ?? 0).toLocaleString("pt-BR")} <span>pts</span></div>
-          <div className="balance-footer"><span className={`live-indicator ${activeStreams.length ? "" : "indicator-paused"}`} /> {data ? activeStreams.length ? "Contagem interna ativa" : "Contagem interna pausada" : "Conectando"}<span className="points-rate">+5 pts internos / live / min</span></div>
-          <div className="balance-progress"><span /></div>
-          <div className="balance-footnote">Continue assistindo para subir de nível <span>→</span></div>
+        <div className="official-points-note">
+          <strong>LiveLoot não concede pontos por assistir.</strong>
+          <span>Os pontos são da Twitch ou da Kick. Para bônus do jogo, vincule as contas na sua conta do PokeIdle.</span>
+          <a href="https://pokeidle.io" target="_blank" rel="noopener noreferrer">Abrir PokeIdle ↗</a>
         </div>
         <div className="hero-orb orb-one" /><div className="hero-orb orb-two" />
       </section>
 
       <section className="content" id="lives">
-        <div className="section-heading"><div><div className="eyebrow section-eyebrow">AO VIVO AGORA <span className="live-indicator" /></div><h2>Encontre sua próxima live</h2><p>Escolha uma live e seus pontos começam a contar automaticamente.</p></div><button className="view-all">Ver todas <span>→</span></button></div>
-        <div className="toolbar"><div className="filters" role="tablist" aria-label="Filtrar lives por categoria">{categories.map((category) => <button key={category} className={`filter ${activeFilter === category ? "filter-active" : ""}`} onClick={() => setActiveFilter(category)}>{category}</button>)}</div><div className="toolbar-actions"><label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar live..." aria-label="Buscar live" /><kbd>⌘ K</kbd></label>{data?.user.role === "admin" && <button className="add-live-button" onClick={() => { setAddError(""); setAddOpen(true); }}><span className="add-icon" aria-hidden="true">+</span><span>Adicionar live</span></button>}</div></div>
+        <div className="section-heading"><div><div className="eyebrow section-eyebrow">CANAIS</div><h2>Escolha uma live</h2><p>O status informa o que o player permite verificar; confirme seus pontos no canal oficial.</p></div><button className="view-all">Ver todas <span>→</span></button></div>
+        <div className="toolbar"><div className="filters" role="tablist" aria-label="Filtrar lives por categoria">{categories.map((category) => <button key={category} className={`filter ${activeFilter === category ? "filter-active" : ""}`} onClick={() => setActiveFilter(category)}>{category}</button>)}</div><div className="toolbar-actions"><label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar live..." aria-label="Buscar live" /><kbd>⌘ K</kbd></label>{data && <button className="add-live-button" onClick={() => { setAddError(""); setAddOpen(true); }}><span className="add-icon" aria-hidden="true">+</span><span>Adicionar live</span></button>}</div></div>
         {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Fechar aviso">×</button></div>}
         {lastRemoved && <div className="notice remove-notice" role="status">Live de {lastRemoved.channelName} removida da sua lista.<button className="undo-remove" onClick={undoRemove}>Desfazer</button><button onClick={() => setLastRemoved(null)} aria-label="Fechar aviso">×</button></div>}
         {addOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddOpen(false); }}><section className="add-modal" role="dialog" aria-modal="true" aria-labelledby="add-live-title"><button className="modal-close" onClick={() => setAddOpen(false)} aria-label="Fechar">×</button><div className="eyebrow">SUA LISTA DE LIVES</div><h3 id="add-live-title">Adicionar live</h3><p>Cole o link do canal da Twitch ou do Kick.</p><form onSubmit={addStream}><label htmlFor="live-url">Link da live</label><input id="live-url" type="url" value={liveUrl} onChange={(event) => setLiveUrl(event.target.value)} placeholder="https://www.twitch.tv/canal" autoFocus required />{addError && <div className="form-error" role="alert">{addError}</div>}<div className="modal-actions"><button type="button" className="cancel-button" onClick={() => setAddOpen(false)}>Cancelar</button><button type="submit" className="add-live-button">Adicionar</button></div></form></section></div>}
         {adminSetupOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setAdminSetupOpen(false); }}><section className="add-modal" role="dialog" aria-modal="true" aria-labelledby="claim-admin-title"><button className="modal-close" onClick={() => setAdminSetupOpen(false)} aria-label="Fechar">×</button><div className="eyebrow">CONFIGURAÇÃO DO SITE</div><h3 id="claim-admin-title">Ativar administrador</h3><p>O dono do site encontra este código nas variáveis de ambiente da hospedagem.</p><form onSubmit={claimAdmin}><label htmlFor="admin-setup-token">Código de configuração</label><input id="admin-setup-token" type="password" autoComplete="off" value={adminSetupToken} onChange={(event) => setAdminSetupToken(event.target.value)} required autoFocus />{adminSetupError && <div className="form-error" role="alert">{adminSetupError}</div>}<div className="modal-actions"><button type="button" className="cancel-button" onClick={() => setAdminSetupOpen(false)}>Cancelar</button><button type="submit" className="add-live-button" disabled={adminSetupBusy}>{adminSetupBusy ? "Verificando…" : "Ativar admin"}</button></div></form></section></div>}
         <div className="stream-grid">
           {streams.map((stream) => <article className="stream-card" key={stream.id}>
-            <PlayerEmbed stream={stream} onPing={handlePing} onActivity={handleActivity} />
+            <PlayerEmbed stream={stream} />
             <div className="card-info">
               <div className={`platform-icon platform-${stream.platform}`}>{stream.platform === "twitch" ? "▣" : "K"}</div>
               <div className="stream-copy"><div className="stream-title">{stream.title}</div><div className="stream-meta">{stream.channelName} <span>·</span> {stream.category}</div></div>
               {data?.user.role === "admin" && <button className="remove-live" onClick={() => removeStream(stream)} aria-label={`Remover live de ${stream.channelName}`} title="Remover live"><span aria-hidden="true">×</span><span className="remove-label">Remover</span></button>}
             </div>
-            <div className="card-footer"><span className="viewers"><span className="viewer-dot" />{stream.viewers} assistindo</span><a className="platform-open-link" href={`https://${stream.platform === "twitch" ? "www.twitch.tv" : "kick.com"}/${encodeURIComponent(stream.channelName)}`} target="_blank" rel="noopener noreferrer">Abrir {stream.platform === "twitch" ? "Twitch" : "Kick"} ↗</a></div>
+            <div className="card-footer"><span>Pontos verificados no canal</span><a className="platform-open-link" href={`https://${stream.platform === "twitch" ? "www.twitch.tv" : "kick.com"}/${encodeURIComponent(stream.channelName)}`} target="_blank" rel="noopener noreferrer">Assistir na {stream.platform === "twitch" ? "Twitch" : "Kick"} ↗</a></div>
           </article>)}
           {streams.length === 0 && <div className="empty-state">Nenhuma live encontrada. Tente outra busca ou categoria.</div>}
         </div>
       </section>
 
-      <footer id="rewards"><span>✦</span> LiveLoot <span className="footer-muted">· Pontos LiveLoot são demonstrativos; pontos oficiais ficam na sua conta da plataforma.</span><span className="footer-right">Abra o canal oficial para acompanhar os pontos da plataforma</span></footer>
+      <footer id="rewards"><span>✦</span> LiveLoot <span className="footer-muted">· Não rastreamos nem concedemos os pontos oficiais das plataformas. Verifique o saldo no canal depois de entrar.</span><span className="footer-right">PokeIdle exige vincular suas contas para conceder bônus de live.</span></footer>
     </main>
   );
 }

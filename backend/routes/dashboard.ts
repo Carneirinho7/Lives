@@ -17,7 +17,6 @@ export async function GET() {
         name: profile.full_name || user.user_metadata.name || user.email,
         email: user.email,
         role: profile.role,
-        pointsBalance: profile.points_balance,
       },
       streams: getStreams(),
     });
